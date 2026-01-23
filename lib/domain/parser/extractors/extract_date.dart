@@ -4,148 +4,139 @@ import 'package:remindly/domain/model/token.dart';
 import 'package:remindly/domain/parser/extractors/extractors.dart';
 
 class DateExtractor implements Extractors {
+  static final _spaces = RegExp(r'\s+');
+
+  // Boundary عربي آمن
+  static String _wb(final String p) => r'(?<!\S)' + p + r'(?!\S)';
+
   @override
   void apply(final ParseContext ctx) {
     var s = ctx.text;
     final today = DateTime(ctx.now.year, ctx.now.month, ctx.now.day);
 
-    // ------------------------------------------------------------
-    // (1) كلمات ثابتة
-    // ------------------------------------------------------------
-    if (_matchAndSet(ctx, s, RegExp(r'\b(النهارده|اليوم|نهارده)\b'), today)) {
-      ctx.text = _cleanSpaces(ctx.text);
+    // ============================================================
+    // (1) كلمات ثابتة: اليوم / بكرة / بعد بكرة / امبارح
+    // ============================================================
+
+    if (_matchAndSet(ctx, s, RegExp(_wb(r'(النهارده|اليوم|نهارده)')), today)) {
+      ctx.text = _clean(ctx.text);
       return;
     }
 
-    // بعد بكرة / بكرة (normalized: بكرة -> بكره ، جمعة -> جمعه)
     if (_matchAndSet(
       ctx,
       s,
-      RegExp(r'\b(بعد\s+بكره)\b'),
+      RegExp(_wb(r'(بعد\s+بكره)')),
       today.add(const Duration(days: 2)),
     )) {
-      ctx.text = _cleanSpaces(ctx.text);
+      ctx.text = _clean(ctx.text);
       return;
     }
 
     if (_matchAndSet(
       ctx,
       s,
-      RegExp(r'\b(بكره)\b'),
+      RegExp(_wb(r'(بكره)')),
       today.add(const Duration(days: 1)),
     )) {
-      ctx.text = _cleanSpaces(ctx.text);
+      ctx.text = _clean(ctx.text);
       return;
     }
 
     if (_matchAndSet(
       ctx,
       s,
-      RegExp(r'\b(امبارح)\b'),
+      RegExp(_wb(r'(امبارح)')),
       today.subtract(const Duration(days: 1)),
     )) {
-      ctx.text = _cleanSpaces(ctx.text);
+      ctx.text = _clean(ctx.text);
       return;
     }
 
-    // ------------------------------------------------------------
-    // (2) أول/آخر الأسبوع/الشهر
-    // ------------------------------------------------------------
-    // أول الأسبوع: السبت (نقدر نخليها الاثنين لو حابب، لكن هنختار الاثنين كأشهر في العمل)
-    // هنا هنستخدم "بداية الاسبوع" => الاثنين القادم/الحالي حسب اليوم
-    final startWeekMatch = RegExp(
-      r'\b(بدايه\s+الاسبوع|بداية\s+الاسبوع|اول\s+الاسبوع)\b',
+    // ============================================================
+    // (2) بداية / نهاية الأسبوع
+    // ============================================================
+
+    final startWeek = RegExp(
+      _wb(r'(بدايه\s+الاسبوع|بداية\s+الاسبوع|اول\s+الاسبوع)'),
     ).firstMatch(s);
-    if (startWeekMatch != null) {
-      final raw = startWeekMatch.group(0)!;
+    if (startWeek != null) {
+      final raw = startWeek.group(0)!;
       final date = _nextOrSameWeekday(today, DateTime.monday, forceNext: false);
-      ctx.date = DateTime(date.year, date.month, date.day);
-      ctx.tokens.add(Token(ExtractKind.date, raw));
-      ctx.text = _cleanSpaces(s.replaceAll(raw, ' '));
+      _commit(ctx, s, raw, date);
       return;
     }
 
-    final endWeekMatch = RegExp(
-      r'\b(نهايه\s+الاسبوع|نهاية\s+الاسبوع|اخر\s+الاسبوع|آخر\s+الاسبوع)\b',
+    final endWeek = RegExp(
+      _wb(r'(نهايه\s+الاسبوع|نهاية\s+الاسبوع|اخر\s+الاسبوع|آخر\s+الاسبوع)'),
     ).firstMatch(s);
-    if (endWeekMatch != null) {
-      final raw = endWeekMatch.group(0)!;
+    if (endWeek != null) {
+      final raw = endWeek.group(0)!;
       final date = _nextOrSameWeekday(today, DateTime.sunday, forceNext: false);
-      ctx.date = DateTime(date.year, date.month, date.day);
-      ctx.tokens.add(Token(ExtractKind.date, raw));
-      ctx.text = _cleanSpaces(s.replaceAll(raw, ' '));
+      _commit(ctx, s, raw, date);
       return;
     }
 
-    final startMonthMatch = RegExp(
-      r'\b(بدايه\s+الشهر|بداية\s+الشهر|اول\s+الشهر)\b',
+    // ============================================================
+    // (3) بداية / نهاية الشهر
+    // ============================================================
+
+    final startMonth = RegExp(
+      _wb(r'(بدايه\s+الشهر|بداية\s+الشهر|اول\s+الشهر)'),
     ).firstMatch(s);
-    if (startMonthMatch != null) {
-      final raw = startMonthMatch.group(0)!;
+    if (startMonth != null) {
+      final raw = startMonth.group(0)!;
       final date = DateTime(today.year, today.month, 1);
-      ctx.date = date;
-      ctx.tokens.add(Token(ExtractKind.date, raw));
-      ctx.text = _cleanSpaces(s.replaceAll(raw, ' '));
+      _commit(ctx, s, raw, date);
       return;
     }
 
-    final endMonthMatch = RegExp(
-      r'\b(نهايه\s+الشهر|نهاية\s+الشهر|اخر\s+الشهر|آخر\s+الشهر)\b',
+    final endMonth = RegExp(
+      _wb(r'(نهايه\s+الشهر|نهاية\s+الشهر|اخر\s+الشهر|آخر\s+الشهر)'),
     ).firstMatch(s);
-    if (endMonthMatch != null) {
-      final raw = endMonthMatch.group(0)!;
-      final firstNextMonth = (today.month == 12)
+    if (endMonth != null) {
+      final raw = endMonth.group(0)!;
+      final firstNextMonth = today.month == 12
           ? DateTime(today.year + 1, 1, 1)
           : DateTime(today.year, today.month + 1, 1);
       final date = firstNextMonth.subtract(const Duration(days: 1));
-      ctx.date = DateTime(date.year, date.month, date.day);
-      ctx.tokens.add(Token(ExtractKind.date, raw));
-      ctx.text = _cleanSpaces(s.replaceAll(raw, ' '));
+      _commit(ctx, s, raw, date);
       return;
     }
 
-    // ------------------------------------------------------------
-    // (3) تاريخ رقمي: 12/3 أو 12/3/2026 أو 12-3-26
-    // نفترض dd/mm (الأكثر شيوعًا عربيًا). لو عايز mm/dd قولّي.
-    // ------------------------------------------------------------
+    // ============================================================
+    // (4) تاريخ رقمي: 12/3 أو 12-3-2026
+    // ============================================================
+
     final numericDate = RegExp(
-      r'\b(\d{1,2})[\/\-\.](\d{1,2})(?:[\/\-\.](\d{2,4}))?\b',
+      _wb(r'(\d{1,2})[\/\-\.](\d{1,2})(?:[\/\-\.](\d{2,4}))?'),
     ).firstMatch(s);
+
     if (numericDate != null) {
       final raw = numericDate.group(0)!;
       final d = int.parse(numericDate.group(1)!);
       final m = int.parse(numericDate.group(2)!);
       final yRaw = numericDate.group(3);
 
-      final year = (yRaw == null)
+      final year = yRaw == null
           ? today.year
-          : (yRaw.length == 2 ? (2000 + int.parse(yRaw)) : int.parse(yRaw));
+          : (yRaw.length == 2 ? 2000 + int.parse(yRaw) : int.parse(yRaw));
 
       final parsed = _safeDate(year, m, d);
       if (parsed != null) {
-        // لو من غير سنة وجت في الماضي → خليها السنة الجاية
-        if (yRaw == null && parsed.isBefore(today)) {
-          final nextYearParsed = _safeDate(today.year + 1, m, d);
-          if (nextYearParsed != null) {
-            ctx.date = nextYearParsed;
-          } else {
-            ctx.date = parsed;
-          }
-        } else {
-          ctx.date = parsed;
-        }
+        final finalDate = (yRaw == null && parsed.isBefore(today))
+            ? _safeDate(today.year + 1, m, d) ?? parsed
+            : parsed;
 
-        ctx.tokens.add(Token(ExtractKind.date, raw));
-        ctx.text = _cleanSpaces(s.replaceAll(raw, ' '));
+        _commit(ctx, s, raw, finalDate);
         return;
       }
     }
 
-    // ------------------------------------------------------------
-    // (4) يوم + شهر عربي (+ سنة اختيارية)
-    // مثال: 12 يناير 2026 / 12 يناير
-    // (بعد normalization: يناير/فبراير... غالبًا ثابتة)
-    // ------------------------------------------------------------
+    // ============================================================
+    // (5) يوم + شهر عربي
+    // ============================================================
+
     final monthMap = <String, int>{
       'يناير': 1,
       'فبراير': 2,
@@ -165,52 +156,38 @@ class DateExtractor implements Extractors {
     };
 
     final arabicMonthDate = RegExp(
-      r'\b(\d{1,2})\s+(يناير|فبراير|مارس|ابريل|أبريل|مايو|يونيو|يوليو|اغسطس|أغسطس|سبتمبر|اكتوبر|أكتوبر|نوفمبر|ديسمبر)(?:\s+(\d{4}))?\b',
+      _wb(
+        r'(\d{1,2})\s+(يناير|فبراير|مارس|ابريل|أبريل|مايو|يونيو|يوليو|اغسطس|أغسطس|سبتمبر|اكتوبر|أكتوبر|نوفمبر|ديسمبر)(?:\s+(\d{4}))?',
+      ),
     ).firstMatch(s);
 
     if (arabicMonthDate != null) {
       final raw = arabicMonthDate.group(0)!;
       final day = int.parse(arabicMonthDate.group(1)!);
-      final monthName = arabicMonthDate.group(2)!;
+      final month = monthMap[arabicMonthDate.group(2)!]!;
       final yearStr = arabicMonthDate.group(3);
 
-      final month = monthMap[monthName]!;
       final year = yearStr == null ? today.year : int.parse(yearStr);
-
       final parsed = _safeDate(year, month, day);
-      if (parsed != null) {
-        if (yearStr == null && parsed.isBefore(today)) {
-          final nextYearParsed = _safeDate(today.year + 1, month, day);
-          ctx.date = nextYearParsed ?? parsed;
-        } else {
-          ctx.date = parsed;
-        }
 
-        ctx.tokens.add(Token(ExtractKind.date, raw));
-        ctx.text = _cleanSpaces(s.replaceAll(raw, ' '));
+      if (parsed != null) {
+        final finalDate = (yearStr == null && parsed.isBefore(today))
+            ? _safeDate(today.year + 1, month, day) ?? parsed
+            : parsed;
+
+        _commit(ctx, s, raw, finalDate);
         return;
       }
     }
 
-    // ------------------------------------------------------------
-    // (5) الأسبوع الجاي/القادم (بدون يوم محدد) -> +7 أيام
-    // ------------------------------------------------------------
-    if (_matchAndSet(
-      ctx,
-      s,
-      RegExp(r'\b(الاسبوع\s+(الجاي|القادم)|الاسبوع\s+اللي\s+جاي)\b'),
-      today.add(const Duration(days: 7)),
-    )) {
-      ctx.text = _cleanSpaces(ctx.text);
-      return;
-    }
+    // ============================================================
+    // (6) يوم الأسبوع (الجمعة / الجمعة الجاية)
+    // ============================================================
 
-    // ------------------------------------------------------------
-    // (6) يوم أسبوع (الجمعة/الجمعة الجاية...)
-    // هنا هنخلي "الجمعة" = الجمعة القادمة دائمًا (أأمن)
-    // ------------------------------------------------------------
     final weekdayMatch = RegExp(
-      r'\b(يوم\s+)?(السبت|الاحد|الاثنين|الاتنين|الثلاثاء|الاربعاء|الخميس|الجمعه)(\s+(الجاي|القادم|اللي\s+جاي))?\b',
+      _wb(
+        r'(يوم\s+)?(السبت|الاحد|الاثنين|الاتنين|الثلاثاء|الاربعاء|الخميس|الجمعه)(\s+(الجاي|القادم|اللي\s+جاي))?',
+      ),
     ).firstMatch(s);
 
     if (weekdayMatch != null) {
@@ -218,65 +195,48 @@ class DateExtractor implements Extractors {
       final dayWord = weekdayMatch.group(2)!;
       final hasNext = weekdayMatch.group(3) != null;
 
-      final targetWeekday = _arabicWeekdayToDartWeekday(dayWord);
-      if (targetWeekday != null) {
-        // لو قال "الجاي" forceNext=true
-        // لو ما قالش، برضه نخليها الجاية (forceNext=true) عشان أأمن
-        final date = _nextOrSameWeekday(
-          today,
-          targetWeekday,
-          forceNext: true || hasNext,
-        );
-        ctx.date = DateTime(date.year, date.month, date.day);
-        ctx.tokens.add(Token(ExtractKind.date, raw));
-        ctx.text = _cleanSpaces(s.replaceAll(raw, ' '));
+      final target = _arabicWeekdayToDartWeekday(dayWord);
+      if (target != null) {
+        final date = _nextOrSameWeekday(today, target, forceNext: hasNext);
+        _commit(ctx, s, raw, date);
         return;
       }
     }
 
-    // ------------------------------------------------------------
-    // (7) قبل/بعد + رقم + وحدة (أيام/أسابيع/شهور/سنين)
-    // ده “تاريخ نسبي” لكن بنستخرج Date فقط
-    // ------------------------------------------------------------
-    final rel = RegExp(
-      r'\b(بعد|قبل)\s+(\d+)\s+(يوم|ايام|أيام|اسبوع|أسبوع|اسابيع|أسابيع|شهر|شهور|أشهر|سنه|سنة|سنين|سنوات)\b',
-    ).firstMatch(s);
-    if (rel != null) {
-      final raw = rel.group(0)!;
-      final dir = rel.group(1)!; // بعد/قبل
-      final n = int.tryParse(rel.group(2)!) ?? 0;
-      final unit = rel.group(3)!;
-
-      if (n > 0) {
-        int days = 0;
-        if (unit == 'يوم' || unit == 'ايام' || unit == 'أيام') {
-          days = n;
-        } else if (unit == 'اسبوع' ||
-            unit == 'أسبوع' ||
-            unit == 'اسابيع' ||
-            unit == 'أسابيع') {
-          days = n * 7;
-        } else if (unit == 'شهر' || unit == 'شهور' || unit == 'أشهر') {
-          days = n * 30; // تقريب
-        } else {
-          days = n * 365; // تقريب
-        }
-
-        final date = (dir == 'بعد')
-            ? today.add(Duration(days: days))
-            : today.subtract(Duration(days: days));
-        ctx.date = DateTime(date.year, date.month, date.day);
-        ctx.tokens.add(Token(ExtractKind.date, raw));
-        ctx.text = _cleanSpaces(s.replaceAll(raw, ' '));
-        return;
-      }
-    }
-
-    ctx.text = _cleanSpaces(s);
+    ctx.text = _clean(s);
   }
 
-  int? _arabicWeekdayToDartWeekday(final String day) {
-    switch (day) {
+  // ============================================================
+  // Helpers
+  // ============================================================
+
+  void _commit(
+    final ParseContext ctx,
+    final String s,
+    final String raw,
+    final DateTime date,
+  ) {
+    ctx.date = DateTime(date.year, date.month, date.day);
+    ctx.tokens.add(Token(ExtractKind.date, raw));
+    ctx.text = _clean(s.replaceAll(raw, ' '));
+  }
+
+  bool _matchAndSet(
+    final ParseContext ctx,
+    final String s,
+    final RegExp regex,
+    final DateTime date,
+  ) {
+    final m = regex.firstMatch(s);
+    if (m == null) return false;
+
+    final raw = m.group(0)!;
+    _commit(ctx, s, raw, date);
+    return true;
+  }
+
+  int? _arabicWeekdayToDartWeekday(final String d) {
+    switch (d) {
       case 'السبت':
         return DateTime.saturday;
       case 'الاحد':
@@ -297,46 +257,26 @@ class DateExtractor implements Extractors {
   }
 
   DateTime _nextOrSameWeekday(
-    final DateTime fromDate,
+    final DateTime from,
     final int targetWeekday, {
     required final bool forceNext,
   }) {
-    final current = fromDate.weekday;
+    final current = from.weekday;
     var delta = (targetWeekday - current) % 7;
     if (delta == 0 && forceNext) delta = 7;
-    return fromDate.add(Duration(days: delta));
+    return from.add(Duration(days: delta));
   }
 
-  bool _matchAndSet(
-    final ParseContext ctx,
-    final String s,
-    final RegExp regex,
-    final DateTime date,
-  ) {
-    final m = regex.firstMatch(s);
-    if (m == null) return false;
-
-    final raw = m.group(0)!;
-    ctx.date = DateTime(date.year, date.month, date.day);
-    ctx.tokens.add(Token(ExtractKind.date, raw));
-    ctx.text = s.replaceAll(regex, ' ');
-    return true;
-  }
-
-  DateTime? _safeDate(final int year, final int month, final int day) {
-    if (month < 1 || month > 12) return null;
-    if (day < 1 || day > 31) return null;
-
+  DateTime? _safeDate(final int y, final int m, final int d) {
+    if (m < 1 || m > 12 || d < 1 || d > 31) return null;
     try {
-      final dt = DateTime(year, month, day);
-      // تأكد إن التاريخ ما اتعملش rollover (مثلاً 31/2)
-      if (dt.year != year || dt.month != month || dt.day != day) return null;
+      final dt = DateTime(y, m, d);
+      if (dt.year != y || dt.month != m || dt.day != d) return null;
       return DateTime(dt.year, dt.month, dt.day);
     } catch (_) {
       return null;
     }
   }
 
-  String _cleanSpaces(final String s) =>
-      s.replaceAll(RegExp(r'\s+'), ' ').trim();
+  String _clean(final String s) => s.replaceAll(_spaces, ' ').trim();
 }
