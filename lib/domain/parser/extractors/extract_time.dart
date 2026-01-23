@@ -4,6 +4,10 @@ import 'package:remindly/domain/model/token.dart';
 import 'package:remindly/domain/parser/extractors/extractors.dart';
 
 class TimeExtractor implements Extractors {
+  static final RegExp _periodWordsRegex = RegExp(
+    r'(صباحًا|صباحا|صباح|مساءً|مساء|بالليل|ليل|فجر|الظهر|ظهر|عصر|مغرب|عشاء|بعد\s+الظهر)',
+  );
+
   @override
   void apply(final ParseContext ctx) {
     var s = ctx.text;
@@ -11,12 +15,11 @@ class TimeExtractor implements Extractors {
     // (0) حدّد AM/PM من كلمات الفترة
     final period = _detectPeriod(s); // am/pm/null
 
-    // ------------------------------------------------------------
-    // (1) صيغة الساعة: "الساعة 5" / "الساعه 5:30"
-    // ------------------------------------------------------------
+    // (1) "الساعة 5" / "الساعه 5:30" (هيمسك حتى لو قبلها "في")
     final hourPhrase = RegExp(
-      r'\b(الساعة|الساعه)\s+(\d{1,2})(?::(\d{1,2}))?\b',
+      r'(الساعة|الساعه)\s+(\d{1,2})(?::(\d{1,2}))?',
     ).firstMatch(s);
+
     if (hourPhrase != null) {
       final raw = hourPhrase.group(0)!;
       var h = int.parse(hourPhrase.group(2)!);
@@ -26,24 +29,16 @@ class TimeExtractor implements Extractors {
       if (fixed != null) {
         ctx.time = (h: fixed.$1, m: fixed.$2);
         ctx.tokens.add(Token(ExtractKind.time, raw));
+
         ctx.text = _cleanSpaces(
-          s
-              .replaceAll(raw, ' ')
-              .replaceAll(
-                RegExp(
-                  r'\b(صباح|مساء|بالليل|ليل|فجر|الظهر|ظهر|عصر|مغرب|عشاء|بعد\s+الظهر)\b',
-                ),
-                ' ',
-              ),
+          s.replaceAll(raw, ' ').replaceAll(_periodWordsRegex, ' '),
         );
         return;
       }
     }
 
-    // ------------------------------------------------------------
-    // (2) صيغة رقمية: "5:30"
-    // ------------------------------------------------------------
-    final numeric = RegExp(r'\b(\d{1,2}):(\d{2})\b').firstMatch(s);
+    // (2) "5:30"
+    final numeric = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(s);
     if (numeric != null) {
       final raw = numeric.group(0)!;
       final h = int.parse(numeric.group(1)!);
@@ -53,25 +48,17 @@ class TimeExtractor implements Extractors {
       if (fixed != null) {
         ctx.time = (h: fixed.$1, m: fixed.$2);
         ctx.tokens.add(Token(ExtractKind.time, raw));
+
         ctx.text = _cleanSpaces(
-          s
-              .replaceAll(raw, ' ')
-              .replaceAll(
-                RegExp(
-                  r'\b(صباح|مساء|بالليل|ليل|فجر|الظهر|ظهر|عصر|مغرب|عشاء|بعد\s+الظهر)\b',
-                ),
-                ' ',
-              ),
+          s.replaceAll(raw, ' ').replaceAll(_periodWordsRegex, ' '),
         );
         return;
       }
     }
 
-    // ------------------------------------------------------------
-    // (3) أرقام بالكلام (أساسيات): "خمسة" / "خمسه" / "سبعة ونص"
-    // ------------------------------------------------------------
+    // (3) "خمسه" / "سبعه ونص" ... (أساسيات)
     final wordTime = RegExp(
-      r'\b(الساعة|الساعه)?\s*(واحده|واحدة|اتنين|اثنين|تلاته|ثلاثه|اربعه|أربعه|خمسه|خمسة|سته|ستة|سبعه|سبعة|تمانيه|ثمانيه|تسعه|تسعة|عشره|عشرة|حداشر|احداشر|اتناشر|اثناشر)\b(\s+ونص)?\b',
+      r'(الساعة|الساعه)?\s*(واحده|واحدة|اتنين|اثنين|تلاته|ثلاثه|اربعه|أربعه|خمسه|خمسة|سته|ستة|سبعه|سبعة|تمانيه|ثمانيه|تسعه|تسعة|عشره|عشرة|حداشر|احداشر|اتناشر|اثناشر)(\s+ونص)?',
     ).firstMatch(s);
 
     if (wordTime != null) {
@@ -88,15 +75,9 @@ class TimeExtractor implements Extractors {
         if (fixed != null) {
           ctx.time = (h: fixed.$1, m: fixed.$2);
           ctx.tokens.add(Token(ExtractKind.time, raw));
+
           ctx.text = _cleanSpaces(
-            s
-                .replaceAll(raw, ' ')
-                .replaceAll(
-                  RegExp(
-                    r'\b(صباح|مساء|بالليل|ليل|فجر|الظهر|ظهر|عصر|مغرب|عشاء|بعد\s+الظهر)\b',
-                  ),
-                  ' ',
-                ),
+            s.replaceAll(raw, ' ').replaceAll(_periodWordsRegex, ' '),
           );
           return;
         }
@@ -106,28 +87,26 @@ class TimeExtractor implements Extractors {
     ctx.text = _cleanSpaces(s);
   }
 
-  /// يرجّع "am" أو "pm" أو null
   String? _detectPeriod(final String s) {
     // pm-ish
-    if (RegExp(r'\b(مساء|بالليل|ليل|عشاء|مغرب|بعد\s+الظهر|عصر)\b').hasMatch(s))
+    if (RegExp(
+      r'(مساءً|مساء|بالليل|ليل|عشاء|مغرب|بعد\s+الظهر|عصر|الظهر|ظهر)',
+    ).hasMatch(s)) {
       return 'pm';
+    }
     // am-ish
-    if (RegExp(r'\b(صباح|فجر)\b').hasMatch(s)) return 'am';
-    // الظهر غالبًا 12-2 pm
-    if (RegExp(r'\b(الظهر|ظهر)\b').hasMatch(s)) return 'pm';
+    if (RegExp(r'(صباحًا|صباحا|صباح|فجر)').hasMatch(s)) {
+      return 'am';
+    }
     return null;
   }
 
-  /// يحوّل ساعة/دقيقة إلى 24h مع مراعاة period
-  /// يرجع (hour, minute) أو null لو قيم غير صالحة
   (int, int)? _fixHourWithPeriod(int h, final int m, final String? period) {
     if (h < 0 || h > 23) return null;
     if (m < 0 || m > 59) return null;
 
-    // لو المستخدم كتب 0..23 بصراحة نخليها كما هي
     if (h > 12) return (h, m);
 
-    // لو period موجود:
     if (period == 'pm') {
       if (h < 12) h += 12;
       return (h, m);
@@ -138,7 +117,6 @@ class TimeExtractor implements Extractors {
       return (h, m);
     }
 
-    // لو مفيش period: نخليها كما هي (resolver يقرر النهارده/بكرة)
     return (h, m);
   }
 

@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:remindly/domain/model/parse_context.dart';
 import 'package:remindly/domain/model/parse_reminder.dart';
 import 'package:remindly/domain/parser/extractors/extract_date.dart';
@@ -15,12 +17,12 @@ class ReminderParser {
   // مهم: RelativeTimeExtractor قبل Preprocess
   // عشان relative (بدون "بعد") ممكن يعتمد على وجود trigger قبل ما يتشال
   final List<Extractors> _pipeline = [
-    RelativeTimeExtractor(),
+    // RelativeTimeExtractor(),
     PreprocessExtractor(),
-    RepeatExtractor(),
-    DateExtractor(),
-    TimeExtractor(),
-    TaskExtractor(),
+    // RepeatExtractor(),
+    // DateExtractor(),
+    // TimeExtractor(),
+    // TaskExtractor(),
   ];
 
   ParsedReminder parse(final String input, {final DateTime? now}) {
@@ -30,9 +32,13 @@ class ReminderParser {
       step.apply(ctx);
 
       // Early exit لو relative موجود (اختياري لكن عملي)
-      if (ctx.relative != null) break;
+      if (ctx.relative != null) {
+        ctx.task = ctx.text.trim();
+        break;
+      }
     }
-
+    log(ctx.text);
+    log(ctx.task ?? "no task");
     final dt = resolveDateTime(ctx);
     final task = ctx.task;
 
