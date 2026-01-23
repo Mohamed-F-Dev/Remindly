@@ -17,12 +17,12 @@ class ReminderParser {
   // مهم: RelativeTimeExtractor قبل Preprocess
   // عشان relative (بدون "بعد") ممكن يعتمد على وجود trigger قبل ما يتشال
   final List<Extractors> _pipeline = [
-    // RelativeTimeExtractor(),
     PreprocessExtractor(),
-    // RepeatExtractor(),
-    // DateExtractor(),
-    // TimeExtractor(),
-    // TaskExtractor(),
+    RelativeTimeExtractor(),
+    RepeatExtractor(),
+    DateExtractor(),
+    TimeExtractor(),
+    TaskExtractor(),
   ];
 
   ParsedReminder parse(final String input, {final DateTime? now}) {

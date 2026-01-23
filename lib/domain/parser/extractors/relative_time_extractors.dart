@@ -4,299 +4,160 @@ import 'package:remindly/domain/model/token.dart';
 import 'package:remindly/domain/parser/extractors/extractors.dart';
 
 class RelativeTimeExtractor implements Extractors {
+  // ==============
+  // Compiled regex
+  // ==============
+  static final _spaces = RegExp(r'\s+');
+
+  // Intent trigger (قبل/بعد)
+  static final _trigger = RegExp(
+    r'(?<!\S)(و)?\s*(فكرني|فكّرني|ذكرني|ذكّرني|نبهني|نبّهني)(?!\S)',
+  );
+
+  // After-like words (تقوم مقام "بعد")
+  static final _afterLike = RegExp(r'(?<!\S)(بعد|كمان|خلال|بعدها)(?!\S)');
+
+  // Arabic digits
+  static const _arabicDigits = '٠١٢٣٤٥٦٧٨٩';
+
+  // --- Fixed pieces ---
+  static final _halfHour = RegExp(r'(?<!\S)(نص\s*ساعه|نص\s*ساعة)(?!\S)');
+  static final _quarterHour = RegExp(r'(?<!\S)(ربع\s*ساعه|ربع\s*ساعة)(?!\S)');
+  static final _thirdHour = RegExp(
+    r'(?<!\S)(تلت\s*ساعه|تلت\s*ساعة|ثلث\s*ساعه|ثلث\s*ساعة)(?!\S)',
+  );
+
+  static final _twoHours = RegExp(r'(?<!\S)(ساعتين|ساعتان)(?!\S)');
+  static final _oneHour = RegExp(r'(?<!\S)(ساعه|ساعة)(?!\S)');
+
+  static final _twoDays = RegExp(r'(?<!\S)(يومين|يومان)(?!\S)');
+  static final _oneDay = RegExp(r'(?<!\S)(يوم)(?!\S)');
+
+  static final _twoWeeks = RegExp(r'(?<!\S)(اسبوعين|أسبوعين)(?!\S)');
+  static final _oneWeek = RegExp(r'(?<!\S)(اسبوع|أسبوع)(?!\S)');
+
+  // --- Number + unit ---
+  static final _nMinutes = RegExp(
+    r'(?<!\S)(\d+)\s*(دقيقه|دقيقة|دقايق|دقائق|د)(?!\S)',
+  );
+  static final _nHours = RegExp(r'(?<!\S)(\d+)\s*(ساعه|ساعة|ساعات|س)(?!\S)');
+  static final _nDays = RegExp(r'(?<!\S)(\d+)\s*(يوم|ايام|أيام)(?!\S)');
+  static final _nWeeks = RegExp(
+    r'(?<!\S)(\d+)\s*(اسبوع|أسبوع|اسابيع|أسابيع)(?!\S)',
+  );
+  static final _nMonths = RegExp(r'(?<!\S)(\d+)\s*(شهر|شهور|أشهر)(?!\S)');
+  static final _nYears = RegExp(r'(?<!\S)(\d+)\s*(سنه|سنة|سنين|سنوات)(?!\S)');
+
+  // --- Compound: ساعة ونص / ساعة وربع / ساعتين نص ساعة (بدون و) ---
+  static final _hourAndHalf = RegExp(
+    r'(?<!\S)(ساعه|ساعة|ساعتين|ساعتان)\s*(و)?\s*نص(?!\S)',
+  );
+  static final _hourAndQuarter = RegExp(
+    r'(?<!\S)(ساعه|ساعة|ساعتين|ساعتان)\s*(و)?\s*ربع(?!\S)',
+  );
+  static final _hourAndThird = RegExp(
+    r'(?<!\S)(ساعه|ساعة|ساعتين|ساعتان)\s*(و)?\s*(تلت|ثلث)(?!\S)',
+  );
+
+  // fillers common in speech
+  static final _fillers = RegExp(r'(?<!\S)(كده|يعني|بس)(?!\S)');
+
   @override
   void apply(final ParseContext ctx) {
+    final original = ctx.text;
     var s = ctx.text;
 
-    // (A) حالات خاصة قصيرة (لازم "بعد" عشان تبقى واضحة)
-    if (_matchAndReplace(
-      ctx,
-      s,
-      RegExp(r'(بعد\s+(شويه|شوية|قليل))'),
-      const Duration(minutes: 5),
-    ))
-      return;
+    // final hasSignal = _trigger.hasMatch(s) || _afterLike.hasMatch(s);
+    // if (!hasSignal) {
+    //   ctx.text = _clean(original);
+    //   return;
+    // }
 
-    // (B1) ثابتة "بعد ..." (آمنة)
-    if (_matchAndReplace(
-      ctx,
-      s,
-      RegExp(r'(بعد\s+(نص\s*ساعه|نص\s*ساعة))'),
-      const Duration(minutes: 30),
-    ))
-      return;
-    if (_matchAndReplace(
-      ctx,
-      s,
-      RegExp(r'(بعد\s+(ربع\s*ساعه|ربع\s*ساعة))'),
-      const Duration(minutes: 15),
-    ))
-      return;
-    if (_matchAndReplace(
-      ctx,
-      s,
-      RegExp(r'(بعد\s+(تلت\s*ساعه|تلت\s*ساعة|ثلث\s*ساعه|ثلث\s*ساعة))'),
-      const Duration(minutes: 20),
-    ))
-      return;
-    if (_matchAndReplace(
-      ctx,
-      s,
-      RegExp(r'(بعد\s+(ساعه|ساعة))'),
-      const Duration(hours: 1),
-    ))
-      return;
-    if (_matchAndReplace(
-      ctx,
-      s,
-      RegExp(r'(بعد\s+(ساعتين|ساعتان))'),
-      const Duration(hours: 2),
-    ))
-      return;
+    // نجمع و"نستهلك" matches من النص (عشان ما يحصلش double count)
+    var total = Duration.zero;
+    final extractedPhrases = <String>[];
 
-    // (B2) ثابتة بدون "بعد" لكن لازم trigger بعدها (عشان "الساعة 5" ما تتكسرش)
-    if (_matchFixedBeforeTrigger(
-      ctx,
-      s,
-      RegExp(r'\b(نص\s*ساعه|نص\s*ساعة)\b'),
-      const Duration(minutes: 30),
-    ))
-      return;
-    if (_matchFixedBeforeTrigger(
-      ctx,
-      s,
-      RegExp(r'\b(ربع\s*ساعه|ربع\s*ساعة)\b'),
-      const Duration(minutes: 15),
-    ))
-      return;
-    if (_matchFixedBeforeTrigger(
-      ctx,
-      s,
-      RegExp(r'\b(تلت\s*ساعه|تلت\s*ساعة|ثلث\s*ساعه|ثلث\s*ساعة)\b'),
-      const Duration(minutes: 20),
-    ))
-      return;
-    if (_matchFixedBeforeTrigger(
-      ctx,
-      s,
-      RegExp(r'\b(ساعتين|ساعتان)\b'),
-      const Duration(hours: 2),
-    ))
-      return;
-    if (_matchFixedBeforeTrigger(
-      ctx,
-      s,
-      RegExp(r'\b(ساعه|ساعة)\b'),
-      const Duration(hours: 1),
-    ))
-      return;
-
-    // (C1) أرقام + وحدات مع "بعد" (آمنة)
-    if (_matchNumberDuration(
-      ctx,
-      s,
-      RegExp(r'بعد\s+(\d+)\s+(دقيقه|دقيقة|دقايق|دقائق|د)'),
-      (final n) => Duration(minutes: n),
-    ))
-      return;
-    if (_matchNumberDuration(
-      ctx,
-      s,
-      RegExp(r'بعد\s+(\d+)\s+(ساعه|ساعة|ساعات|س)'),
-      (final n) => Duration(hours: n),
-    ))
-      return;
-    if (_matchNumberDuration(
-      ctx,
-      s,
-      RegExp(r'بعد\s+(\d+)\s+(يوم|ايام|أيام)'),
-      (final n) => Duration(days: n),
-    ))
-      return;
-    if (_matchNumberDuration(
-      ctx,
-      s,
-      RegExp(r'بعد\s+(\d+)\s+(اسبوع|أسبوع|اسابيع|أسابيع)'),
-      (final n) => Duration(days: n * 7),
-    ))
-      return;
-    if (_matchNumberDuration(
-      ctx,
-      s,
-      RegExp(r'بعد\s+(\d+)\s+(شهر|شهور|أشهر)'),
-      (final n) => Duration(days: n * 30),
-    ))
-      return;
-    if (_matchNumberDuration(
-      ctx,
-      s,
-      RegExp(r'بعد\s+(\d+)\s+(سنه|سنة|سنين|سنوات)'),
-      (final n) => Duration(days: n * 365),
-    ))
-      return;
-
-    // (C2) أرقام + وحدات بدون "بعد" لكن لازم trigger بعدها
-    if (_matchNumberBeforeTrigger(
-      ctx,
-      s,
-      RegExp(r'\b(\d+)\s+(دقيقه|دقيقة|دقايق|دقائق|د)\b'),
-      (final n) => Duration(minutes: n),
-    ))
-      return;
-    if (_matchNumberBeforeTrigger(
-      ctx,
-      s,
-      RegExp(r'\b(\d+)\s+(ساعه|ساعة|ساعات|س)\b'),
-      (final n) => Duration(hours: n),
-    ))
-      return;
-    if (_matchNumberBeforeTrigger(
-      ctx,
-      s,
-      RegExp(r'\b(\d+)\s+(يوم|ايام|أيام)\b'),
-      (final n) => Duration(days: n),
-    ))
-      return;
-    if (_matchNumberBeforeTrigger(
-      ctx,
-      s,
-      RegExp(r'\b(\d+)\s+(اسبوع|أسبوع|اسابيع|أسابيع)\b'),
-      (final n) => Duration(days: n * 7),
-    ))
-      return;
-    if (_matchNumberBeforeTrigger(
-      ctx,
-      s,
-      RegExp(r'\b(\d+)\s+(شهر|شهور|أشهر)\b'),
-      (final n) => Duration(days: n * 30),
-    ))
-      return;
-    if (_matchNumberBeforeTrigger(
-      ctx,
-      s,
-      RegExp(r'\b(\d+)\s+(سنه|سنة|سنين|سنوات)\b'),
-      (final n) => Duration(days: n * 365),
-    ))
-      return;
-
-    // (D) مثنى وجمع خاص (مع "بعد" فقط لتقليل الغلط)
-    if (_matchAndReplace(
-      ctx,
-      s,
-      RegExp(r'(بعد\s+(يومين|يومان))'),
-      const Duration(days: 2),
-    ))
-      return;
-    if (_matchAndReplace(
-      ctx,
-      s,
-      RegExp(r'(بعد\s+(اسبوعين|أسبوعين))'),
-      const Duration(days: 14),
-    ))
-      return;
-    if (_matchAndReplace(
-      ctx,
-      s,
-      RegExp(r'(بعد\s+شهرين)'),
-      const Duration(days: 60),
-    ))
-      return;
-    if (_matchAndReplace(
-      ctx,
-      s,
-      RegExp(r'(بعد\s+سنتين)'),
-      const Duration(days: 730),
-    ))
-      return;
-
-    ctx.text = _cleanSpaces(s);
-  }
-
-  // تطابق وتستبدل (عام)
-  bool _matchAndReplace(
-    final ParseContext ctx,
-    final String s,
-    final RegExp regex,
-    final Duration duration,
-  ) {
-    final match = regex.firstMatch(s);
-    if (match != null) {
-      ctx.relative = duration;
-      ctx.tokens.add(Token(ExtractKind.relative, match.group(0)!));
-      ctx.text = _cleanSpaces(s.replaceAll(regex, ' '));
+    bool consume(final RegExp r, final Duration d) {
+      final m = r.firstMatch(s);
+      if (m == null) return false;
+      extractedPhrases.add(m.group(0)!);
+      total += d;
+      s = _clean(s.replaceRange(m.start, m.end, ' '));
       return true;
     }
-    return false;
-  }
 
-  // ثابت بدون "بعد" بشرط Trigger بعده
-  bool _matchFixedBeforeTrigger(
-    final ParseContext ctx,
-    final String s,
-    final RegExp regex,
-    final Duration duration,
-  ) {
-    final match = regex.firstMatch(s);
-    if (match == null) return false;
-
-    final after = s.substring(match.end);
-    if (!_hasTriggerSoon(after)) return false;
-
-    ctx.relative = duration;
-    ctx.tokens.add(Token(ExtractKind.relative, match.group(0)!));
-    ctx.text = _cleanSpaces(s.replaceRange(match.start, match.end, ' '));
-    return true;
-  }
-
-  // أرقام + وحدات (مع "بعد") عام
-  bool _matchNumberDuration(
-    final ParseContext ctx,
-    final String s,
-    final RegExp regex,
-    final Duration Function(int) calc,
-  ) {
-    final match = regex.firstMatch(s);
-    if (match != null) {
-      final num = int.tryParse(match.group(1)!) ?? 0;
-      if (num > 0) {
-        ctx.relative = calc(num);
-        ctx.tokens.add(Token(ExtractKind.relative, match.group(0)!));
-        ctx.text = _cleanSpaces(s.replaceAll(regex, ' '));
-        return true;
-      }
+    bool consumeNumber(final RegExp r, final Duration Function(int) calc) {
+      final m = r.firstMatch(s);
+      if (m == null) return false;
+      final n = int.tryParse(m.group(1)!) ?? 0;
+      if (n <= 0) return false;
+      extractedPhrases.add(m.group(0)!);
+      total += calc(n);
+      s = _clean(s.replaceRange(m.start, m.end, ' '));
+      return true;
     }
-    return false;
+
+    // 1) Compounds أولاً (عشان ما تتحسبش كقطع)
+    while (true) {
+      if (consume(_hourAndHalf, const Duration(minutes: 90))) continue;
+      if (consume(_hourAndQuarter, const Duration(minutes: 75))) continue;
+      if (consume(_hourAndThird, const Duration(minutes: 80))) continue;
+      break;
+    }
+
+    // 2) Fixed words (ساعتين/نص ساعة/ربع ساعة..)
+    while (true) {
+      if (consume(_twoHours, const Duration(hours: 2))) continue;
+      if (consume(_oneHour, const Duration(hours: 1))) continue;
+
+      if (consume(_halfHour, const Duration(minutes: 30))) continue;
+      if (consume(_quarterHour, const Duration(minutes: 15))) continue;
+      if (consume(_thirdHour, const Duration(minutes: 20))) continue;
+
+      if (consume(_twoDays, const Duration(days: 2))) continue;
+      if (consume(_oneDay, const Duration(days: 1))) continue;
+
+      if (consume(_twoWeeks, const Duration(days: 14))) continue;
+      if (consume(_oneWeek, const Duration(days: 7))) continue;
+
+      break;
+    }
+
+    // 3) Number + unit (loop عشان “10 دقايق 5 دقايق”)
+    while (true) {
+      if (consumeNumber(_nMinutes, (final n) => Duration(minutes: n))) continue;
+      if (consumeNumber(_nHours, (final n) => Duration(hours: n))) continue;
+      if (consumeNumber(_nDays, (final n) => Duration(days: n))) continue;
+      if (consumeNumber(_nWeeks, (final n) => Duration(days: n * 7))) continue;
+      if (consumeNumber(_nMonths, (final n) => Duration(days: n * 30)))
+        continue;
+      if (consumeNumber(_nYears, (final n) => Duration(days: n * 365)))
+        continue;
+      break;
+    }
+
+    if (total == Duration.zero) {
+      // مفيش مدة اتلقطت
+      ctx.text = _clean(original);
+      return;
+    }
+
+    // ✅ Commit
+    ctx.relative = total;
+    // نحفظ اللي اتشاف فعلاً (مش النص كله)
+    for (final p in extractedPhrases) {
+      ctx.tokens.add(Token(ExtractKind.relative, p));
+    }
+
+    // ✅ مهم: نشيل اللي اتستخرج من ctx.text (بالـ normalized الناتج)
+    // لو ctx.text بيتستخدم بس للتحليل الداخلي، ده أفضل وأضمن.
+
+    ctx.text = s;
   }
 
-  // أرقام + وحدات بدون "بعد" بشرط Trigger بعده
-  bool _matchNumberBeforeTrigger(
-    final ParseContext ctx,
-    final String s,
-    final RegExp regex,
-    final Duration Function(int) calc,
-  ) {
-    final match = regex.firstMatch(s);
-    if (match == null) return false;
+  // =========================
+  // Normalization (Voice-safe)
+  // =========================
 
-    final num = int.tryParse(match.group(1)!) ?? 0;
-    if (num <= 0) return false;
-
-    final after = s.substring(match.end);
-    if (!_hasTriggerSoon(after)) return false;
-
-    ctx.relative = calc(num);
-    ctx.tokens.add(Token(ExtractKind.relative, match.group(0)!));
-    ctx.text = _cleanSpaces(s.replaceRange(match.start, match.end, ' '));
-    return true;
-  }
-
-  bool _hasTriggerSoon(final String textAfter) {
-    // trigger لازم يبقى قريب: "و فكرني" / "فكرني" / "ذكرني" / "نبهني"
-    return RegExp(
-      r'^\s*(و)?\s*(فكرني|ذكرني|ذكّرني|نبهني|نبّهني)\b',
-    ).hasMatch(textAfter);
-  }
-
-  String _cleanSpaces(final String s) =>
-      s.replaceAll(RegExp(r'\s+'), ' ').trim();
+  static String _clean(final String s) => s.replaceAll(_spaces, ' ').trim();
 }

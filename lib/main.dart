@@ -7,7 +7,7 @@ import 'package:remindly/domain/parser/reminder_parser.dart';
 
 void main() {
   ReminderParser reminder = ReminderParser();
-  final ParsedReminder = reminder.parse("فكرني اذاكر الساعه خمسه ي ");
+  final ParsedReminder = reminder.parse("  عندي مشوار كمان ساعتين   ");
   final tas = ParsedReminder.task;
   ParsedReminder.tokens.forEach((e) {
     log(e.raw);
