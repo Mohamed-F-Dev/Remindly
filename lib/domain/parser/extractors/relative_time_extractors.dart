@@ -129,10 +129,12 @@ class RelativeTimeExtractor implements Extractors {
       if (consumeNumber(_nHours, (final n) => Duration(hours: n))) continue;
       if (consumeNumber(_nDays, (final n) => Duration(days: n))) continue;
       if (consumeNumber(_nWeeks, (final n) => Duration(days: n * 7))) continue;
-      if (consumeNumber(_nMonths, (final n) => Duration(days: n * 30)))
+      if (consumeNumber(_nMonths, (final n) => Duration(days: n * 30))) {
         continue;
-      if (consumeNumber(_nYears, (final n) => Duration(days: n * 365)))
+      }
+      if (consumeNumber(_nYears, (final n) => Duration(days: n * 365))) {
         continue;
+      }
       break;
     }
 

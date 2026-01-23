@@ -4,164 +4,179 @@ import 'package:remindly/domain/model/token.dart';
 import 'package:remindly/domain/parser/extractors/extractors.dart';
 
 class TimeExtractor implements Extractors {
-  static final RegExp _periodWordsRegex = RegExp(
-    r'(صباحًا|صباحا|صباح|مساءً|مساء|بالليل|ليل|فجر|الظهر|ظهر|عصر|مغرب|عشاء|بعد\s+الظهر)',
+  static final _spaces = RegExp(r'\s+');
+
+  // ======================
+  // Period words
+  // ======================
+  static final _amWords = RegExp(r'(صباح|فجر|بدري)', caseSensitive: false);
+  static final _pmWords = RegExp(
+    r'(مساء|بالليل|ليل|عصر|مغرب|عشاء|ظهر|بعد\s+الظهر)',
+    caseSensitive: false,
   );
 
+  // ======================
+  // Core patterns
+  // ======================
+  static final _numericTime = RegExp(r'(?<!\S)(\d{1,2})(?::(\d{2}))?(?!\S)');
+
+  static final _hourWord = RegExp(
+    r'(الساعة|الساعه)?\s*(واحده|واحدة|اتنين|اثنين|تلاته|ثلاثه|اربعه|أربعه|خمسه|خمسة|سته|ستة|سبعه|سبعة|تمانيه|ثمانيه|تسعه|تسعة|عشره|عشرة|حداشر|احداشر|اتناشر|اثناشر)',
+  );
+
+  static final _half = RegExp(r'(ونص)');
+  static final _quarter = RegExp(r'(وربع)');
+  static final _third = RegExp(r'(وتلت|وثلث)');
+  static final _minusQuarter = RegExp(r'(الا\s*ربع|إلا\s*ربع)');
+  static final _minusMinutes = RegExp(r'(الا\s*(\d{1,2}))');
+
+  // ======================
+  // Entry
+  // ======================
   @override
-  void apply(final ParseContext ctx) {
+  void apply(ParseContext ctx) {
     var s = ctx.text;
 
-    // (0) حدّد AM/PM من كلمات الفترة
-    final period = _detectPeriod(s); // am/pm/null
+    final period = _detectPeriod(s);
 
-    // (1) "الساعة 5" / "الساعه 5:30" (هيمسك حتى لو قبلها "في")
-    final hourPhrase = RegExp(
-      r'(الساعة|الساعه)\s+(\d{1,2})(?::(\d{1,2}))?',
-    ).firstMatch(s);
-
-    if (hourPhrase != null) {
-      final raw = hourPhrase.group(0)!;
-      var h = int.parse(hourPhrase.group(2)!);
-      var m = hourPhrase.group(3) != null ? int.parse(hourPhrase.group(3)!) : 0;
-
-      final fixed = _fixHourWithPeriod(h, m, period);
-      if (fixed != null) {
-        ctx.time = (h: fixed.$1, m: fixed.$2);
-        ctx.tokens.add(Token(ExtractKind.time, raw));
-
-        ctx.text = _cleanSpaces(
-          s.replaceAll(raw, ' ').replaceAll(_periodWordsRegex, ' '),
-        );
-        return;
-      }
-    }
-
-    // (2) "5:30"
-    final numeric = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(s);
+    // 1️⃣ Numeric time (5 / 5:30)
+    final numeric = _numericTime.firstMatch(s);
     if (numeric != null) {
-      final raw = numeric.group(0)!;
-      final h = int.parse(numeric.group(1)!);
-      final m = int.parse(numeric.group(2)!);
+      var h = int.parse(numeric.group(1)!);
+      var m = numeric.group(2) != null ? int.parse(numeric.group(2)!) : 0;
 
-      final fixed = _fixHourWithPeriod(h, m, period);
+      final mod = _applyMinuteModifiers(s, h, m);
+      h = mod.h;
+      m = mod.m;
+
+      final fixed = _fixWithPeriod(h, m, period);
       if (fixed != null) {
-        ctx.time = (h: fixed.$1, m: fixed.$2);
-        ctx.tokens.add(Token(ExtractKind.time, raw));
-
-        ctx.text = _cleanSpaces(
-          s.replaceAll(raw, ' ').replaceAll(_periodWordsRegex, ' '),
-        );
+        _commit(ctx, s, numeric.group(0)!, fixed);
         return;
       }
     }
 
-    // (3) "خمسه" / "سبعه ونص" ... (أساسيات)
-    final wordTime = RegExp(
-      r'(الساعة|الساعه)?\s*(واحده|واحدة|اتنين|اثنين|تلاته|ثلاثه|اربعه|أربعه|خمسه|خمسة|سته|ستة|سبعه|سبعة|تمانيه|ثمانيه|تسعه|تسعة|عشره|عشرة|حداشر|احداشر|اتناشر|اثناشر)(\s+ونص)?',
-    ).firstMatch(s);
-
-    if (wordTime != null) {
-      final raw = wordTime.group(0)!.trim();
-      final hourWord = wordTime.group(2)!;
-      final hasHalf = wordTime.group(3) != null;
-
-      final h0 = _arabicWordToHour(hourWord);
+    // 2️⃣ Word-based hour (خمسة / سبعة ونص)
+    final word = _hourWord.firstMatch(s);
+    if (word != null) {
+      final h0 = _wordToHour(word.group(2)!);
       if (h0 != null) {
-        final h = h0;
-        final m = hasHalf ? 30 : 0;
+        var h = h0;
+        var m = 0;
 
-        final fixed = _fixHourWithPeriod(h, m, period);
+        final mod = _applyMinuteModifiers(s, h, m);
+        h = mod.h;
+        m = mod.m;
+
+        final fixed = _fixWithPeriod(h, m, period);
         if (fixed != null) {
-          ctx.time = (h: fixed.$1, m: fixed.$2);
-          ctx.tokens.add(Token(ExtractKind.time, raw));
-
-          ctx.text = _cleanSpaces(
-            s.replaceAll(raw, ' ').replaceAll(_periodWordsRegex, ' '),
-          );
+          _commit(ctx, s, word.group(0)!, fixed);
           return;
         }
       }
     }
 
-    ctx.text = _cleanSpaces(s);
+    // 3️⃣ Period only (الصبح / العصر)
+    final defaultByPeriod = _defaultTimeFromPeriod(period);
+    if (defaultByPeriod != null) {
+      ctx.time = defaultByPeriod;
+      ctx.tokens.add(Token(ExtractKind.time, period!));
+      ctx.text = _clean(s.replaceAll(_amWords, ' ').replaceAll(_pmWords, ' '));
+      return;
+    }
+
+    ctx.text = _clean(s);
   }
 
-  String? _detectPeriod(final String s) {
-    // pm-ish
-    if (RegExp(
-      r'(مساءً|مساء|بالليل|ليل|عشاء|مغرب|بعد\s+الظهر|عصر|الظهر|ظهر)',
-    ).hasMatch(s)) {
-      return 'pm';
+  // ======================
+  // Helpers
+  // ======================
+
+  void _commit(ParseContext ctx, String s, String raw, ({int h, int m}) time) {
+    ctx.time = time;
+    ctx.tokens.add(Token(ExtractKind.time, raw));
+    ctx.text = _clean(
+      s
+          .replaceAll(raw, ' ')
+          .replaceAll(_amWords, ' ')
+          .replaceAll(_pmWords, ' '),
+    );
+  }
+
+  ({int h, int m}) _applyMinuteModifiers(String s, int h, int m) {
+    if (_half.hasMatch(s)) return (h: h, m: 30);
+    if (_quarter.hasMatch(s)) return (h: h, m: 15);
+    if (_third.hasMatch(s)) return (h: h, m: 20);
+
+    final minusQ = _minusQuarter.firstMatch(s);
+    if (minusQ != null) return (h: h - 1, m: 45);
+
+    final minusM = _minusMinutes.firstMatch(s);
+    if (minusM != null) {
+      final d = int.parse(minusM.group(2)!);
+      return (h: h - 1, m: 60 - d);
     }
-    // am-ish
-    if (RegExp(r'(صباحًا|صباحا|صباح|فجر)').hasMatch(s)) {
-      return 'am';
+
+    return (h: h, m: m);
+  }
+
+  String? _detectPeriod(String s) {
+    if (_pmWords.hasMatch(s)) return 'pm';
+    if (_amWords.hasMatch(s)) return 'am';
+    return null;
+  }
+
+  ({int h, int m})? _fixWithPeriod(int h, int m, String? period) {
+    if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+
+    if (h > 12) return (h: h, m: m);
+
+    if (period == 'pm') return (h: h == 12 ? 12 : h + 12, m: m);
+    if (period == 'am') return (h: h == 12 ? 0 : h, m: m);
+
+    // Default UX: evening
+    return (h: h < 7 ? h + 12 : h, m: m);
+  }
+
+  ({int h, int m})? _defaultTimeFromPeriod(String? period) {
+    switch (period) {
+      case 'am':
+        return (h: 9, m: 0);
+      case 'pm':
+        return (h: 20, m: 0);
     }
     return null;
   }
 
-  (int, int)? _fixHourWithPeriod(int h, final int m, final String? period) {
-    if (h < 0 || h > 23) return null;
-    if (m < 0 || m > 59) return null;
-
-    if (h > 12) return (h, m);
-
-    if (period == 'pm') {
-      if (h < 12) h += 12;
-      return (h, m);
-    }
-
-    if (period == 'am') {
-      if (h == 12) h = 0;
-      return (h, m);
-    }
-
-    return (h, m);
+  int? _wordToHour(String w) {
+    const map = {
+      'واحده': 1,
+      'واحدة': 1,
+      'اتنين': 2,
+      'اثنين': 2,
+      'تلاته': 3,
+      'ثلاثه': 3,
+      'اربعه': 4,
+      'أربعه': 4,
+      'خمسه': 5,
+      'خمسة': 5,
+      'سته': 6,
+      'ستة': 6,
+      'سبعه': 7,
+      'سبعة': 7,
+      'تمانيه': 8,
+      'ثمانيه': 8,
+      'تسعه': 9,
+      'تسعة': 9,
+      'عشره': 10,
+      'عشرة': 10,
+      'حداشر': 11,
+      'احداشر': 11,
+      'اتناشر': 12,
+      'اثناشر': 12,
+    };
+    return map[w];
   }
 
-  int? _arabicWordToHour(final String w) {
-    switch (w) {
-      case 'واحده':
-      case 'واحدة':
-        return 1;
-      case 'اتنين':
-      case 'اثنين':
-        return 2;
-      case 'تلاته':
-      case 'ثلاثه':
-        return 3;
-      case 'اربعه':
-      case 'أربعه':
-        return 4;
-      case 'خمسه':
-      case 'خمسة':
-        return 5;
-      case 'سته':
-      case 'ستة':
-        return 6;
-      case 'سبعه':
-      case 'سبعة':
-        return 7;
-      case 'تمانيه':
-      case 'ثمانيه':
-        return 8;
-      case 'تسعه':
-      case 'تسعة':
-        return 9;
-      case 'عشره':
-      case 'عشرة':
-        return 10;
-      case 'حداشر':
-      case 'احداشر':
-        return 11;
-      case 'اتناشر':
-      case 'اثناشر':
-        return 12;
-    }
-    return null;
-  }
-
-  String _cleanSpaces(final String s) =>
-      s.replaceAll(RegExp(r'\s+'), ' ').trim();
+  String _clean(String s) => s.replaceAll(_spaces, ' ').trim();
 }
