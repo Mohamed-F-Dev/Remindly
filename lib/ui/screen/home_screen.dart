@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 
 class MyHomePage extends StatefulWidget {
@@ -10,6 +11,15 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(final BuildContext context) {
-    return const Scaffold();
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            Text("فاكرني", style: Theme.of(context).textTheme.headlineSmall),
+            // AvatarGlow(child:Icon(Icons.))
+          ],
+        ),
+      ),
+    );
   }
 }

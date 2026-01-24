@@ -37,8 +37,7 @@ class ReminderParser {
         break;
       }
     }
-    log(ctx.text);
-    log(ctx.task ?? "no task");
+
     final dt = resolveDateTime(ctx);
     final task = ctx.task;
 
