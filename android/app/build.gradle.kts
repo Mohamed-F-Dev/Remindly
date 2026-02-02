@@ -8,8 +8,7 @@ plugins {
 android {
     namespace = "com.example.remindly"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "28.2.13676358"
-
+    ndkVersion = flutter.ndkVersion
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

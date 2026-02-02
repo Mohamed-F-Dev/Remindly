@@ -10,9 +10,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(final BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      locale: const Locale('ar', 'EG'),
+      title: 'Reminder App',
       theme: AppTheme.theme,
-      home: const MyHomePage(),
+      initialRoute: AppRouting.home,
       onGenerateRoute: AppRouting.ongenerateRout,
     );
   }

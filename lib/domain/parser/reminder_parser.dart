@@ -58,7 +58,7 @@ class ReminderParser {
       final fallback = DateTime(ctx.now.year, ctx.now.month, ctx.now.day, 9, 0);
       return ParsedReminder(
         task: task,
-        dateTime: fallback,
+        dateTime: null,
         isRelative: false,
         repeat: ctx.repeat,
         tokens: List.unmodifiable(ctx.tokens),

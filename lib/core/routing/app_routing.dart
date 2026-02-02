@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:remindly/core/di/di.dart';
+import 'package:remindly/ui/bloc/reminder_cubit/reminder_cubit.dart';
 import 'package:remindly/ui/screen/home_screen.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AppRouting {
   static const String home = "/home";
@@ -8,7 +11,10 @@ class AppRouting {
     switch (setting.name) {
       case home:
         return MaterialPageRoute(
-          builder: (final context) => const MyHomePage(),
+          builder: (final context) => BlocProvider(
+            create: (context) => sl<ReminderCubit>(),
+            child: const MyHomePage(),
+          ),
         );
       default:
         return MaterialPageRoute(builder: (final context) => const Default());

@@ -1,15 +1,9 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:remindly/app.dart';
-import 'package:remindly/domain/model/parse_reminder.dart';
-import 'package:remindly/domain/parser/reminder_parser.dart';
+import 'package:remindly/core/di/init.dart' as di;
 
-void main() {
-  ReminderParser reminder = .new();
-
-  final ParsedReminder = reminder.parse("  عندي مشوار كمان ساعتين   ");
-  final tas = ParsedReminder.task;
-
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await di.init();
   runApp(const MyApp());
 }
