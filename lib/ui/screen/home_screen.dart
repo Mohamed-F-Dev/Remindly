@@ -9,7 +9,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   @override
-  Widget build(BuildContext context) {
+  Widget build(final BuildContext context) {
     return const Scaffold();
   }
 }
