@@ -12,7 +12,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(final BuildContext context) {
     return BlocProvider(
-      create: (context) => sl<LocalReminderCubit>(),
+      create: (context) => sl<LocalReminderCubit>()..getreminders(),
       child: MaterialApp(
         locale: const Locale('ar', 'EG'),
         title: 'Reminder App',

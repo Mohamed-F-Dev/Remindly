@@ -24,7 +24,7 @@ class LocalReminderCubit extends Cubit<LocalReminderState> {
   }
 
   Future<void> removeReminder({required final int id}) async {
-    getreminders();
     await removeReminderUseCase.call(id: id);
+    getreminders();
   }
 }

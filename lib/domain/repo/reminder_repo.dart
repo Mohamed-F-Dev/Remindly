@@ -1,11 +1,15 @@
-import 'package:flutter/material.dart';
 import 'package:remindly/domain/model/parse_reminder.dart';
-import 'package:remindly/domain/parser/reminder_parser.dart';
 
 abstract class ReminderRepositories {
+  //============================add reminder with record
   Future<ParsedReminder> addREminder({
     required final String input,
     final DateTime? datetime,
   });
+
+  //=================================get all reminders form local
   Future<List<ParsedReminder>> getreminders();
+
+  //==============================remmove
+  Future<void> removeReminder(final int id);
 }

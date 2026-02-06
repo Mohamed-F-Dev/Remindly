@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:remindly/core/theme/app_color.dart';
 import 'package:remindly/domain/model/parse_reminder.dart';
 import 'package:remindly/ui/bloc/local_reminder_cubit/local_reminder_cubit.dart';
 
@@ -35,8 +34,36 @@ class CardReminder extends StatelessWidget {
               if (value == 'edit') {
               } else if (value == 'delete') {
                 print("reminder deleted");
-                context.read<LocalReminderCubit>().removeReminder(
-                  id: reminder.id,
+                showDialog(
+                  context: context,
+                  builder: (context) => CupertinoAlertDialog(
+                    title: Text("Delete"),
+                    content: Text("Are you Shour Delete This Reminder "),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: Text(
+                          "Cancel",
+                          style: Theme.of(context).textTheme.titleMedium!,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          context.read<LocalReminderCubit>().removeReminder(
+                            id: reminder.id,
+                          );
+                        },
+                        child: Text(
+                          "Delete",
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleMedium!.copyWith(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               }
             },

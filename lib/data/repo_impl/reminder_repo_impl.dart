@@ -37,4 +37,9 @@ class ReminderRepositoriesImpl implements ReminderRepositories {
   Future<List<ParsedReminder>> getreminders() async {
     return await _localDataSources.getRemindersFromLocal();
   }
+
+  @override
+  Future<void> removeReminder(int id) async {
+    await _localDataSources.removeItem(id: id);
+  }
 }

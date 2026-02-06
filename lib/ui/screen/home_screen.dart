@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive/hive.dart';
 import 'package:remindly/core/utils/show_datatime.dart';
 import 'package:remindly/ui/bloc/local_reminder_cubit/local_reminder_cubit.dart';
 import 'package:remindly/ui/bloc/reminder_cubit/reminder_cubit.dart';
 import 'package:remindly/ui/widget/add_reminder.dart';
+import 'package:remindly/ui/widget/card_reminder.dart';
 import 'package:remindly/ui/widget/empty_screen.dart';
 
 class MyHomePage extends StatefulWidget {
@@ -46,20 +48,16 @@ class _MyHomePageState extends State<MyHomePage> {
                     builder: (context, state) {
                       if (state is LocalReminderfinsh) {
                         if (state.reminders.isEmpty) {
-                          return EmptyScreen();
+                          return Align(
+                            alignment: .center,
+                            child: EmptyScreen(),
+                          );
                         }
 
                         return Column(
                           children: state.reminders
                               .map(
-                                (remindre) => Card(
-                                  child: ListTile(
-                                    title: Text(remindre.task),
-                                    subtitle: Text(
-                                      remindre.dateTime.toString(),
-                                    ),
-                                  ),
-                                ),
+                                (reminder) => CardReminder(reminder: reminder),
                               )
                               .toList(),
                         );
@@ -94,6 +92,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ElevatedButton(
               onPressed: () async {
                 //=========================== add reminder for record
+
                 showDialog(
                   barrierDismissible: false,
                   context: context,
@@ -103,7 +102,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     if (value.isEmpty) {
                       if (!mounted) return;
                       context.read<ReminderCubit>().addReminder(
-                        input: " عندي مذاكر  ",
+                        input: " الساعه عشره عندي مذاكر  ",
                       );
                     }
                   }
