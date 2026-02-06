@@ -3,18 +3,28 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:remindly/domain/model/parse_reminder.dart';
 import 'package:remindly/domain/usecase/get_reminders.dart';
+import 'package:remindly/domain/usecase/remove_reminder.dart';
 part 'local_reminder_state.dart';
 
 class LocalReminderCubit extends Cubit<LocalReminderState> {
-  final GetRemindersUseCase _getRemindersUseCase;
-  LocalReminderCubit(this._getRemindersUseCase) : super(LocalReminderinit());
+  final GetRemindersUseCase getRemindersUseCase;
+  final RemoveReminderUseCase removeReminderUseCase;
+  LocalReminderCubit({
+    required this.removeReminderUseCase,
+    required this.getRemindersUseCase,
+  }) : super(LocalReminderinit());
 
   Future<void> getreminders() async {
     try {
-      final reminders = await _getRemindersUseCase.call();
+      final reminders = await getRemindersUseCase.call();
       emit(LocalReminderfinsh(List.from(reminders)));
     } on Exception catch (e) {
       emit(LocalReminderfailer(e.toString()));
     }
+  }
+
+  Future<void> removeReminder({required final int id}) async {
+    getreminders();
+    await removeReminderUseCase.call(id: id);
   }
 }
