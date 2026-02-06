@@ -12,4 +12,7 @@ abstract class ReminderRepositories {
 
   //==============================remmove
   Future<void> removeReminder(final int id);
+
+  // save reminder with parsed renider model
+  Future<void> saveReminder({required final ParsedReminder reminder});
 }

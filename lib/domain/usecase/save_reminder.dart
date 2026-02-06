@@ -6,6 +6,6 @@ class SaveReminderUseCase {
   const SaveReminderUseCase(this.repo);
 
   Future<void> call({required final ParsedReminder reminder}) async {
-    await repo.SaveReminder(reminder: reminder);
+    await repo.saveReminder(reminder: reminder);
   }
 }
