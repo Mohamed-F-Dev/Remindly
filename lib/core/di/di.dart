@@ -9,6 +9,7 @@ import 'package:remindly/domain/repo/reminder_repo.dart';
 import 'package:remindly/domain/usecase/add_reminder.dart';
 import 'package:remindly/domain/usecase/get_reminders.dart';
 import 'package:remindly/domain/usecase/remove_reminder.dart';
+import 'package:remindly/domain/usecase/save_reminder.dart';
 import 'package:remindly/ui/bloc/local_reminder_cubit/local_reminder_cubit.dart';
 import 'package:remindly/ui/bloc/reminder_cubit/reminder_cubit.dart';
 
@@ -43,13 +44,16 @@ Future<void> initDI() async {
   sl.registerLazySingleton<RemoveReminderUseCase>(
     () => RemoveReminderUseCase(sl<ReminderRepositories>()),
   );
-
+  sl.registerLazySingleton<SaveReminderUseCase>(
+    () => SaveReminderUseCase(sl<ReminderRepositories>()),
+  );
   // cubit
   sl.registerFactory<ReminderCubit>(
     () => ReminderCubit(sl<AddReminderUseCase>()),
   );
   sl.registerFactory<LocalReminderCubit>(
     () => LocalReminderCubit(
+      saveReminderUseCase: sl<SaveReminderUseCase>(),
       getRemindersUseCase: sl<GetRemindersUseCase>(),
       removeReminderUseCase: sl<RemoveReminderUseCase>(),
     ),
