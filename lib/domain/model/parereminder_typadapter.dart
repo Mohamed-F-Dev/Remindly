@@ -6,6 +6,7 @@ class ParsedReminderTypeAdapter extends TypeAdapter<ParsedReminder> {
   @override
   read(BinaryReader reader) {
     return ParsedReminder(
+      id: reader.readInt(),
       task: reader.readString(),
       dateTime: DateTime.fromMillisecondsSinceEpoch(reader.readInt()),
       isRelative: reader.readBool(),
@@ -19,6 +20,7 @@ class ParsedReminderTypeAdapter extends TypeAdapter<ParsedReminder> {
 
   @override
   void write(BinaryWriter writer, obj) {
+    writer.writeInt(obj.id);
     writer.writeString(obj.task);
     writer.writeInt(
       obj.dateTime?.millisecondsSinceEpoch ??
