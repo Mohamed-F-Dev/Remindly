@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:remindly/domain/model/parse_reminder.dart';
 
@@ -14,15 +16,20 @@ class LocalDataSourcesImpl implements LocalDataSources {
   Future<void> saveReminderToLocal({
     required final ParsedReminder reminder,
   }) async {
-    await _box.put("reminser", key);
+    final reminders = List.from(
+      _box.get(key, defaultValue: <ParsedReminder>[]),
+    ).cast<ParsedReminder>();
+
+    reminders.add(reminder);
+    await _box.put(key, reminders);
   }
 
   @override
   Future<List<ParsedReminder>> getRemindersFromLocal() async {
-    final reminders = _box.get("reminders", defaultValue: []);
-    if (reminders is List) {
-      return reminders.cast<ParsedReminder>();
-    }
-    return <ParsedReminder>[];
+    final reminders = List.from(
+      _box.get(key, defaultValue: <ParsedReminder>[]),
+    ).cast<ParsedReminder>();
+
+    return reminders;
   }
 }

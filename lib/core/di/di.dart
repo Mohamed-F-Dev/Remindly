@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:remindly/data/datasources/local_data_sources.dart';
 import 'package:remindly/data/repo_impl/reminder_repo_impl.dart';
 import 'package:remindly/domain/model/parereminder_typadapter.dart';
+import 'package:remindly/domain/model/parse_reminder.dart';
 import 'package:remindly/domain/model/token_type_adapter.dart';
 import 'package:remindly/domain/parser/reminder_parser.dart';
 import 'package:remindly/domain/repo/reminder_repo.dart';
@@ -37,7 +38,7 @@ Future<void> initDI() async {
     () => AddReminderUseCase(repo: sl<ReminderRepositories>()),
   );
   sl.registerLazySingleton<GetRemindersUseCase>(
-    () => GetRemindersUseCase(sl<ReminderRepositoriesImpl>()),
+    () => GetRemindersUseCase(sl<ReminderRepositories>()),
   );
 
   // cubit

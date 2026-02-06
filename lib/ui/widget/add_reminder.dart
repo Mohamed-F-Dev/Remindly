@@ -39,7 +39,7 @@ class _AddReminderState extends State<AddReminder> {
         _record = result.recognizedWords;
         log(result.finalResult.toString());
         if (result.finalResult) {
-          Navigator.pop(context, _record);
+          Navigator.maybePop(context, _record);
         }
       },
 
@@ -53,8 +53,11 @@ class _AddReminderState extends State<AddReminder> {
     _timeout?.cancel();
     _timeout = Timer.periodic(Duration(seconds: 1), (timer) {
       if (_speechToText.isNotListening) {
-        if (mounted) {
-          Navigator.pop(context, _record);
+        if (_record.isEmpty) {
+          _timeout?.cancel();
+          if (mounted && Navigator.canPop(context)) {
+            Navigator.pop(context, _record);
+          }
         }
       }
     });
@@ -78,7 +81,17 @@ class _AddReminderState extends State<AddReminder> {
     return Dialog(
       backgroundColor: Colors.transparent,
 
-      child: CustomButtonAnimation(ontap: () {}, isAnimating: true),
+      child: Column(
+        children: [
+          IconButton(
+            icon: Icon(Icons.close),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          CustomButtonAnimation(ontap: () {}, isAnimating: true),
+        ],
+      ),
     );
   }
 }

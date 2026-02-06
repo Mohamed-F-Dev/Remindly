@@ -12,7 +12,7 @@ class LocalReminderCubit extends Cubit<LocalReminderState> {
   Future<void> getreminders() async {
     try {
       final reminders = await _getRemindersUseCase.call();
-      emit(LocalReminderfinsh(reminders));
+      emit(LocalReminderfinsh(List.from(reminders)));
     } on Exception catch (e) {
       emit(LocalReminderfailer(e.toString()));
     }

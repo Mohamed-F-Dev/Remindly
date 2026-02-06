@@ -9,7 +9,8 @@ class AppRouting {
 
   static Route ongenerateRout(final RouteSettings setting) {
     switch (setting.name) {
-      case home:
+      // case "/" : return MaterialPageRoute(builder: (context) => home,)
+      case "/":
         return MaterialPageRoute(
           builder: (final context) => BlocProvider(
             create: (context) => sl<ReminderCubit>(),
@@ -27,6 +28,6 @@ class Default extends StatelessWidget {
 
   @override
   Widget build(final BuildContext context) {
-    return const Center(child: Text('Page not found'));
+    return Scaffold(body: const Center(child: Text('Page not found')));
   }
 }

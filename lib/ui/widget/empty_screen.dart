@@ -11,8 +11,11 @@ class EmptyScreen extends StatelessWidget {
       mainAxisAlignment: .center,
       children: [
         SizedBox(height: 80),
-        Text("Not Data", style: Theme.of(context).textTheme.titleLarge),
-        Lottie.asset(AppAnimation.notdata, height: 200),
+        Text(
+          "Not Data",
+          style: Theme.of(context).textTheme.titleMedium!.copyWith(height: 0),
+        ),
+        Lottie.asset(AppAnimation.notdata, height: 250),
       ],
     );
   }
