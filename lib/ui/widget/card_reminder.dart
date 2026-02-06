@@ -33,37 +33,9 @@ class CardReminder extends StatelessWidget {
             onSelected: (value) {
               if (value == 'edit') {
               } else if (value == 'delete') {
-                print("reminder deleted");
                 showDialog(
                   context: context,
-                  builder: (context) => CupertinoAlertDialog(
-                    title: Text("Delete"),
-                    content: Text("Are you Shour Delete This Reminder "),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: Text(
-                          "Cancel",
-                          style: Theme.of(context).textTheme.titleMedium!,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          context.read<LocalReminderCubit>().removeReminder(
-                            id: reminder.id,
-                          );
-                        },
-                        child: Text(
-                          "Delete",
-                          style: Theme.of(
-                            context,
-                          ).textTheme.titleMedium!.copyWith(color: Colors.red),
-                        ),
-                      ),
-                    ],
-                  ),
+                  builder: (context) => _confirmDelete(context),
                 );
               }
             },
@@ -75,6 +47,35 @@ class CardReminder extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  CupertinoAlertDialog _confirmDelete(BuildContext context) {
+    return CupertinoAlertDialog(
+      title: Text("Delete"),
+      content: Text("Are you Shour Delete This Reminder "),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          child: Text(
+            "Cancel",
+            style: Theme.of(context).textTheme.titleMedium!,
+          ),
+        ),
+        TextButton(
+          onPressed: () {
+            context.read<LocalReminderCubit>().removeReminder(id: reminder.id);
+          },
+          child: Text(
+            "Delete",
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium!.copyWith(color: Colors.red),
+          ),
+        ),
+      ],
     );
   }
 }
