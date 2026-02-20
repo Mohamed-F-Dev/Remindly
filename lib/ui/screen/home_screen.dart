@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lottie/lottie.dart';
+import 'package:remindly/core/constant/app_animation.dart';
 
 import 'package:remindly/core/utils/show_datatime.dart';
 import 'package:remindly/domain/model/parse_reminder.dart';

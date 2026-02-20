@@ -16,7 +16,7 @@ class AppTheme {
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
-        backgroundColor: AppColor.primaryLight,
+        backgroundColor: AppColor.primary,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         side: const BorderSide(color: AppColor.border),
       ),

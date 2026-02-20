@@ -1,8 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lottie/lottie.dart';
+import 'package:remindly/core/constant/app_animation.dart';
+import 'package:remindly/core/theme/app_color.dart';
 import 'package:remindly/domain/model/parse_reminder.dart';
-import 'package:remindly/ui/bloc/local_reminder_cubit/local_reminder_cubit.dart';
 
 class CardReminder extends StatelessWidget {
   final ParsedReminder reminder;
@@ -18,33 +19,58 @@ class CardReminder extends StatelessWidget {
     final String time = "$hour12:${datetime.minute} :$period";
     return Card(
       color: Colors.white,
-      child: ListTile(
-        title: Text("Task : ${reminder.task}"),
-        subtitle: Column(
-          crossAxisAlignment: .start,
-          children: [Text("Date   : $date"), Text("Time  : $time")],
-        ),
-        trailing: Transform.translate(
-          offset: Offset(0, -20),
-          child: PopupMenuButton<String>(
-            padding: EdgeInsets.all(0),
+      semanticContainer: true,
+      shadowColor: AppColor.textPrimary,
+      elevation: 2,
+      surfaceTintColor: Colors.white,
+      child: ClipRRect(
+        borderRadius: BorderRadiusGeometry.circular(5),
+        child: Stack(
+          children: [
+            ListTile(
+              minLeadingWidth: 3,
+              leading: Container(
+                height: 50,
+                width: 2,
+                decoration: BoxDecoration(color: AppColor.primary),
+              ),
+              title: Text(reminder.task),
+              subtitle: Column(
+                crossAxisAlignment: .start,
+                children: [
+                  Text(
+                    date,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelLarge!.copyWith(color: Colors.grey),
+                  ),
+                  Text(
+                    time,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelLarge!.copyWith(color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              right: -5,
+              top: -5,
+              child: Container(
+                padding: EdgeInsets.only(right: 5, top: 5, bottom: 2, left: 2),
+                alignment: .center,
 
-            color: Colors.white,
-            onSelected: (value) {
-              if (value == 'edit') {
-              } else if (value == 'delete') {
-                showDialog(
-                  context: context,
-                  builder: (context) => confirmDelete(context),
-                );
-              }
-            },
-            itemBuilder: (BuildContext context) => [
-              const PopupMenuItem(value: 'edit', child: Text('Edit')),
-              const PopupMenuItem(value: 'delete', child: Text('Delete')),
-            ],
-            child: Icon(Icons.more_vert),
-          ),
+                decoration: BoxDecoration(
+                  color: AppColor.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                height: 30,
+                width: 30,
+
+                child: Lottie.asset(AppAnimation.watch),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -77,3 +103,25 @@ CupertinoAlertDialog confirmDelete(
     ],
   );
 }
+       // trailing: Transform.translate(
+            //   offset: Offset(0, -20),
+            //   child: PopupMenuButton<String>(
+            //     padding: EdgeInsets.all(0),
+          
+            //     color: Colors.white,
+            //     onSelected: (value) {
+            //       if (value == 'edit') {
+            //       } else if (value == 'delete') {
+            //         showDialog(
+            //           context: context,
+            //           builder: (context) => confirmDelete(context),
+            //         );
+            //       }
+            //     },
+            //     itemBuilder: (BuildContext context) => [
+            //       const PopupMenuItem(value: 'edit', child: Text('Edit')),
+            //       const PopupMenuItem(value: 'delete', child: Text('Delete')),
+            //     ],
+            //     child: Icon(Icons.more_vert),
+            //   ),
+            // ),
