@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:hive/hive.dart';
+
 import 'package:remindly/core/utils/show_datatime.dart';
+import 'package:remindly/domain/model/parse_reminder.dart';
 import 'package:remindly/ui/bloc/local_reminder_cubit/local_reminder_cubit.dart';
 import 'package:remindly/ui/bloc/reminder_cubit/reminder_cubit.dart';
 import 'package:remindly/ui/widget/add_reminder.dart';
-import 'package:remindly/ui/widget/card_reminder.dart';
+
 import 'package:remindly/ui/widget/empty_screen.dart';
+import 'package:remindly/ui/widget/reminder_list.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
@@ -22,52 +24,68 @@ class _MyHomePageState extends State<MyHomePage> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: SingleChildScrollView(
-            child: BlocListener<ReminderCubit, ReminderState>(
-              listener: (context, state) async {
-                if (state is Reminderfinish) {
-                  context.read<LocalReminderCubit>().getreminders();
-                } else if (state is ReminderNotTime) {
-                  final data = await pickDateTime(context);
-                }
-              },
-              child: Column(
-                crossAxisAlignment: .start,
-                children: [
-                  SizedBox(height: 20),
-                  //========================add reminder button
-                  _buildAddReminderButton(context),
+          child: BlocListener<ReminderCubit, ReminderState>(
+            listener: (context, state) async {
+              if (state is Reminderfinish) {
+                context.read<LocalReminderCubit>().getreminders();
+              } else if (state is ReminderNotTime) {
+                //  time not found
+                //1 show timer piker
+                final date = await pickDateTime(context);
+                //2 check date from piker null stop fun
+                if (date == null) return;
 
-                  SizedBox(height: 30),
-                  //=========================show reminders
-                  Text(
-                    "Reminders",
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  BlocBuilder<LocalReminderCubit, LocalReminderState>(
-                    builder: (context, state) {
-                      if (state is LocalReminderfinsh) {
-                        if (state.reminders.isEmpty) {
-                          return Align(
-                            alignment: .center,
-                            child: EmptyScreen(),
-                          );
-                        }
+                // add time this reminder
+                final reminder = ParsedReminder(
+                  task: state.reminder.task,
+                  dateTime: date,
+                  isRelative: state.reminder.isRelative,
+                  repeat: state.reminder.repeat,
+                  id: state.reminder.id,
+                  tokens: state.reminder.tokens,
+                );
 
-                        return Column(
-                          children: state.reminders
-                              .map(
-                                (reminder) => CardReminder(reminder: reminder),
-                              )
-                              .toList(),
-                        );
+                //save reminder to local and update
+                context.read<LocalReminderCubit>().saveReminder(
+                  reminder: reminder,
+                );
+              }
+            },
+            child: Column(
+              crossAxisAlignment: .start,
+              children: [
+                SizedBox(height: 20),
+                //========================add reminder button
+                _buildAddReminderButton(context),
+
+                SizedBox(height: 30),
+                //=========================show reminders
+                Text(
+                  "Reminders",
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                BlocBuilder<LocalReminderCubit, LocalReminderState>(
+                  builder: (context, state) {
+                    if (state is LocalReminderfinsh) {
+                      if (state.reminders.isEmpty) {
+                        return Align(alignment: .center, child: EmptyScreen());
                       }
 
-                      return Container();
-                    },
-                  ),
-                ],
-              ),
+                      return ReminderList(reminders: state.reminders);
+
+                      //   Column(
+                      //   children: state.reminders
+                      //       .map(
+                      //         (reminder) => CardReminder(reminder: reminder),
+                      //       )
+                      //       .toList(),
+                      // );
+                    }
+
+                    return Container();
+                  },
+                ),
+              ],
             ),
           ),
         ),
@@ -102,7 +120,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     if (value.isEmpty) {
                       if (!mounted) return;
                       context.read<ReminderCubit>().addReminder(
-                        input: " الساعه عشره عندي مذاكر  ",
+                        input: "بعد  ثانيه   سأكون في المنزل",
                       );
                     }
                   }
@@ -116,3 +134,5 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
+
+// بعد دقيقه او دقيقاتان

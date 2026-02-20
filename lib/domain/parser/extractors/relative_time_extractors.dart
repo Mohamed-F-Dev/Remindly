@@ -9,16 +9,8 @@ class RelativeTimeExtractor implements Extractors {
   // ==============
   static final _spaces = RegExp(r'\s+');
 
-  // Intent trigger (قبل/بعد)
-  static final _trigger = RegExp(
-    r'(?<!\S)(و)?\s*(فكرني|فكّرني|ذكرني|ذكّرني|نبهني|نبّهني)(?!\S)',
-  );
-
   // After-like words (تقوم مقام "بعد")
   static final _afterLike = RegExp(r'(?<!\S)(بعد|كمان|خلال|بعدها)(?!\S)');
-
-  // Arabic digits
-  static const _arabicDigits = '٠١٢٣٤٥٦٧٨٩';
 
   // --- Fixed pieces ---
   static final _halfHour = RegExp(r'(?<!\S)(نص\s*ساعه|نص\s*ساعة)(?!\S)');
@@ -58,9 +50,6 @@ class RelativeTimeExtractor implements Extractors {
   static final _hourAndThird = RegExp(
     r'(?<!\S)(ساعه|ساعة|ساعتين|ساعتان)\s*(و)?\s*(تلت|ثلث)(?!\S)',
   );
-
-  // fillers common in speech
-  static final _fillers = RegExp(r'(?<!\S)(كده|يعني|بس)(?!\S)');
 
   @override
   void apply(final ParseContext ctx) {

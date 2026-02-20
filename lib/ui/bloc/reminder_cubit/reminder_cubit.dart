@@ -1,5 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:remindly/domain/model/parse_reminder.dart';
 import 'package:remindly/domain/usecase/add_reminder.dart';
 
 part 'reminder_state.dart';
@@ -16,7 +17,7 @@ class ReminderCubit extends Cubit<ReminderState> {
     try {
       final reminder = await _reminderUseCase(input: input, datetime: datetime);
       if (reminder.dateTime == null) {
-        emit(ReminderNotTime());
+        emit(ReminderNotTime(reminder: reminder));
       } else {
         emit(Reminderfinish());
       }

@@ -13,6 +13,10 @@ final class Reminderloading extends ReminderState {}
 
 final class Reminderfinish extends ReminderState {}
 
-final class ReminderNotTime extends ReminderState {}
+final class ReminderNotTime extends ReminderState {
+  final ParsedReminder reminder;
+
+  const ReminderNotTime({required this.reminder});
+}
 
 final class ReminderFailure extends ReminderState {}

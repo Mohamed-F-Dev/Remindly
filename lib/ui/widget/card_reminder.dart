@@ -35,7 +35,7 @@ class CardReminder extends StatelessWidget {
               } else if (value == 'delete') {
                 showDialog(
                   context: context,
-                  builder: (context) => _confirmDelete(context),
+                  builder: (context) => confirmDelete(context),
                 );
               }
             },
@@ -49,33 +49,31 @@ class CardReminder extends StatelessWidget {
       ),
     );
   }
+}
 
-  CupertinoAlertDialog _confirmDelete(BuildContext context) {
-    return CupertinoAlertDialog(
-      title: Text("Delete"),
-      content: Text("Are you Shour Delete This Reminder "),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          child: Text(
-            "Cancel",
-            style: Theme.of(context).textTheme.titleMedium!,
-          ),
+CupertinoAlertDialog confirmDelete(
+  BuildContext context, {
+  void Function()? onPressed,
+}) {
+  return CupertinoAlertDialog(
+    title: Text("Delete"),
+    content: Text("Are you Shour Delete This Reminder "),
+    actions: [
+      TextButton(
+        onPressed: () {
+          Navigator.pop(context, false);
+        },
+        child: Text("Cancel", style: Theme.of(context).textTheme.titleMedium!),
+      ),
+      TextButton(
+        onPressed: onPressed,
+        child: Text(
+          "Delete",
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium!.copyWith(color: Colors.red),
         ),
-        TextButton(
-          onPressed: () {
-            context.read<LocalReminderCubit>().removeReminder(id: reminder.id);
-          },
-          child: Text(
-            "Delete",
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium!.copyWith(color: Colors.red),
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
 }
