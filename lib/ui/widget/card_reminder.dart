@@ -19,7 +19,7 @@ class CardReminder extends StatelessWidget {
     final String time = "$hour12:${datetime.minute} :$period";
     return Card(
       color: Colors.white,
-      semanticContainer: true,
+
       shadowColor: AppColor.textPrimary,
       elevation: 2,
       surfaceTintColor: Colors.white,
