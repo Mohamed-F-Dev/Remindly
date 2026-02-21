@@ -16,6 +16,7 @@ class _AddReminderState extends State<AddReminder> {
   final SpeechToText _speechToText = SpeechToText();
   bool __speechEnabled = false;
   Timer? _timeout;
+  bool recordIsEmpty = true;
 
   String _record = "";
 
@@ -37,7 +38,6 @@ class _AddReminderState extends State<AddReminder> {
     await _speechToText.listen(
       onResult: (result) {
         _record = result.recognizedWords;
-        log(result.finalResult.toString());
         if (result.finalResult) {
           Navigator.maybePop(context, _record);
         }
@@ -52,6 +52,10 @@ class _AddReminderState extends State<AddReminder> {
   _startTimer() {
     _timeout?.cancel();
     _timeout = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (_record.isNotEmpty && recordIsEmpty) {
+        setState(() {});
+        recordIsEmpty = false;
+      }
       if (_speechToText.isNotListening) {
         if (_record.isEmpty) {
           _timeout?.cancel();
@@ -82,14 +86,17 @@ class _AddReminderState extends State<AddReminder> {
       backgroundColor: Colors.transparent,
 
       child: Column(
+        mainAxisAlignment: .center,
+
         children: [
-          IconButton(
-            icon: Icon(Icons.close),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
           CustomButtonAnimation(ontap: () {}, isAnimating: true),
+          SizedBox(height: 30),
+          Text(
+            _speechToText.lastRecognizedWords.isEmpty ? " Speaking..." : "",
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall!.copyWith(color: Colors.white),
+          ),
         ],
       ),
     );

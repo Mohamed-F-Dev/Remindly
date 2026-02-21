@@ -1,16 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:lottie/lottie.dart';
-import 'package:remindly/core/constant/app_animation.dart';
-import 'package:remindly/core/theme/app_color.dart';
-
 import 'package:remindly/core/utils/show_datatime.dart';
 import 'package:remindly/domain/model/parse_reminder.dart';
 import 'package:remindly/ui/bloc/local_reminder_cubit/local_reminder_cubit.dart';
 import 'package:remindly/ui/bloc/reminder_cubit/reminder_cubit.dart';
-import 'package:remindly/ui/widget/add_reminder.dart';
 import 'package:remindly/ui/widget/button_add_reminder.dart';
 
 import 'package:remindly/ui/widget/empty_screen.dart';
@@ -62,7 +55,6 @@ class _MyHomePageState extends State<MyHomePage> {
             child: Column(
               crossAxisAlignment: .start,
               children: [
-                SizedBox(height: 20),
                 Text(
                   "Welcome",
                   style: Theme.of(context).textTheme.titleLarge!.copyWith(
@@ -74,7 +66,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   "Speak your task instead of typing \n Ready to organize your day and add new tasks?",
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
-
+                Divider(),
                 SizedBox(height: 30),
                 //=========================show reminders
                 Text(

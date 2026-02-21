@@ -14,6 +14,7 @@ class MyApp extends StatelessWidget {
     return BlocProvider(
       create: (context) => sl<LocalReminderCubit>()..getreminders(),
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         locale: const Locale('ar', 'EG'),
         title: 'Reminder App',
         theme: AppTheme.theme,

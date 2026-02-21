@@ -4,6 +4,7 @@ import 'package:lottie/lottie.dart';
 import 'package:remindly/core/constant/app_animation.dart';
 import 'package:remindly/core/theme/app_color.dart';
 import 'package:remindly/domain/model/parse_reminder.dart';
+import 'package:remindly/ui/screen/reminder_detils_screen.dart';
 
 class CardReminder extends StatelessWidget {
   final ParsedReminder reminder;
@@ -23,54 +24,69 @@ class CardReminder extends StatelessWidget {
       shadowColor: AppColor.textPrimary,
       elevation: 2,
       surfaceTintColor: Colors.white,
-      child: ClipRRect(
-        borderRadius: BorderRadiusGeometry.circular(5),
-        child: Stack(
-          children: [
-            ListTile(
-              minLeadingWidth: 3,
-              leading: Container(
-                height: 50,
-                width: 2,
-                decoration: BoxDecoration(color: AppColor.primary),
-              ),
-              title: Text(reminder.task),
-              subtitle: Column(
-                crossAxisAlignment: .start,
-                children: [
-                  Text(
-                    date,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelLarge!.copyWith(color: Colors.grey),
-                  ),
-                  Text(
-                    time,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelLarge!.copyWith(color: Colors.grey),
-                  ),
-                ],
-              ),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ReminderDetilsScreen(reminder: reminder),
             ),
-            Positioned(
-              right: -5,
-              top: -5,
-              child: Container(
-                padding: EdgeInsets.only(right: 5, top: 5, bottom: 2, left: 2),
-                alignment: .center,
-
-                decoration: BoxDecoration(
-                  color: AppColor.primary,
-                  borderRadius: BorderRadius.circular(10),
+          );
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadiusGeometry.circular(5),
+          child: Stack(
+            children: [
+              ListTile(
+                minLeadingWidth: 3,
+                leading: Container(
+                  height: 50,
+                  width: 2,
+                  decoration: BoxDecoration(color: AppColor.primary),
                 ),
-                height: 30,
-                width: 30,
-
-                child: Lottie.asset(AppAnimation.watch),
+                title: Text(reminder.task),
+                subtitle: Column(
+                  crossAxisAlignment: .start,
+                  children: [
+                    Text(
+                      date,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelLarge!.copyWith(color: Colors.grey),
+                    ),
+                    Text(
+                      time,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelLarge!.copyWith(color: Colors.grey),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              Positioned(
+                right: -5,
+                top: -5,
+                child: Container(
+                  padding: EdgeInsets.only(
+                    right: 5,
+                    top: 5,
+                    bottom: 2,
+                    left: 2,
+                  ),
+                  alignment: .center,
+
+                  decoration: BoxDecoration(
+                    color: AppColor.primary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  height: 30,
+                  width: 30,
+
+                  child: Lottie.asset(AppAnimation.watch),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
